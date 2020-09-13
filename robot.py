@@ -14,12 +14,17 @@ class Robot:
         self.video_on = False
         self.video_stream = None
 
-        self.command_s.settimeout(5)
+        self.command_s.settimeout(10)
 
     def connect(self):
         self.command_s.connect((Robot.ROBOT_IP, 40923))
+        # enabling command mode
+        print("Connected")
 
     def sendCommand(self, command):
+        # correcting syntax
+        if command[-1] != ";":
+            command += ";"
         # sending command
         self.command_s.send(command.encode("utf-8"))
 
@@ -32,18 +37,13 @@ class Robot:
 
     def commandMode(self):
         self.command_s.connect((Robot.ROBOT_IP, 40923))
-        # enabling command mode
-        sendCommand("command")
         while True:
             command = input("Command: ")
             # quitting program
             if command.lower() == "q":
                 break
-            # correcting syntax
             else:
-                if command[-1] != ";":
-                    command += ";"
-                response = sendCommand(command)
+                response = self.sendCommand(command)
                 print(response)
 
         # Disable the port connection
@@ -51,22 +51,28 @@ class Robot:
         self.command_s.close()
 
     def startVideoStream(self):
-        sendCommand("stream on")
+        self.sendCommand("stream on")
         self.video_s.connect((Robot.ROBOT_IP, 40921))
         self.video_on = True
 
         self.video_stream = cv2.VideoCapture(f"tcp://{Robot.ROBOT_IP}:40921")
-        getVideoStream()
+        self.getVideoStream()
 
         self.video_s.shutdown(socket.SHUT_WR)
         self.video_s.close()
-    
+
     def getVideoStream(self):
         """Seperate function used for threading"""
-        while self.video_on:
-            self.video_frame = self.video_stream.read()
+        while True:
+            ret, frame = self.video_stream.read()
+            if ret == False:
+                print("Video stream read incorrectly")
+            else:
+                cv2.imshow("frame", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
         self.video_stream.release()
-    
+
     def readVideoStream(self):
         """Used by external program"""
         return self.video_frame
