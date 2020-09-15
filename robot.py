@@ -1,30 +1,36 @@
 #!/usr/bin/env python
 
 import socket
+from typing import ClassVar, Dict
 
 import cv2
 import numpy as np
 
 
+def create_sockets():
+    sockets: Dict[str, socket.socket] = {
+        "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+        "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    }
+    sockets["command"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sockets["video"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    [sockets[x].settimeout(5) for x in sockets]
+
+
 class Robot:
 
-    ROBOT_IP = "192.168.2.1"
-    PORTS = {"video": 40921, "control": 40923, "event": 40925}
+    ROBOT_IP: str = "192.168.2.1"
+    PORTS: ClassVar[Dict[str, int]] = {
+        "video": 40921,
+        "control": 40923,
+        "event": 40925
+    }
 
     def __init__(self) -> None:
-        self.sockets = {
-            "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-            "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-        }
-        self.sockets["command"] = socket.socket(socket.AF_INET,
-                                                socket.SOCK_STREAM)
-        self.sockets["video"] = socket.socket(socket.AF_INET,
-                                              socket.SOCK_STREAM)
-        [self.sockets[x].settimeout(5) for x in self.sockets]
+        self.sockets: Dict[str, socket.socket] = create_sockets()
 
-        # video
-        self.video_on = False
-        self.video_stream = None
+        self.video_on: bool = False
+        self.video_stream: cv2.VideoCapture = None
 
     def connect(self) -> bool:
         """Initialises connection to robot over the command port.
@@ -58,7 +64,7 @@ class Robot:
 
         # receiving command
         try:
-            buf = self.sockets["command"].recv(1024)
+            buf: str = self.sockets["command"].recv(1024)
             return buf.decode("utf-8")
         except socket.error as e:
             return f"Error receiving: {e}"
@@ -68,12 +74,12 @@ class Robot:
         self.sockets["command"].connect(
             (Robot.ROBOT_IP, Robot.PORTS["control"]))
         while True:
-            command = input("Command: ")
+            command: str = input("Command: ")
             # exiting command mode
             if command.lower() == "q":
                 break
             else:
-                response = self.send_command(command)
+                response: str = self.send_command(command)
                 print(response)
 
         # Disable the port connection
@@ -97,6 +103,7 @@ class Robot:
     def get_video_stream(self) -> None:
         """Continually updates the video stream."""
         while True:
+            ret: bool
             ret, self.video_frame = self.video_stream.read()
             if ret == False:
                 print("Video stream read incorrectly")

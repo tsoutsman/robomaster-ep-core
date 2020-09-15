@@ -6,7 +6,7 @@ from robot import Robot
 
 
 def main() -> None:
-    robot = Robot()
+    robot: Robot = Robot()
     robot.connect()
 
     robot.start_video_stream()
