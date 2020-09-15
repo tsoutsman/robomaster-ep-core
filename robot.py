@@ -41,8 +41,7 @@ class Robot:
         try:
             self.sockets["command"].connect(
                 (Robot.ROBOT_IP, Robot.PORTS["control"]))
-        except socket.timeout as e:
-            print("Error connecting")
+        except socket.timeout:
             return False
         self.send_command("command on")
         return True
@@ -56,13 +55,12 @@ class Robot:
         Returns:
             The robot's response.
         """
-        # Correcting syntax
+        # Robot requires a ';' at the end of the command to properly parse it.
         if command[-1] != ";":
             command += ";"
-        # Sending command
+
         self.sockets["command"].send(command.encode("utf-8"))
 
-        # receiving command
         try:
             buf: str = self.sockets["command"].recv(1024)
             return buf.decode("utf-8")
@@ -92,21 +90,21 @@ class Robot:
 
         self.send_command("stream on")
         self.sockets["video"].connect((Robot.ROBOT_IP, Robot.PORTS["video"]))
-        self.video_stream = cv2.VideoCapture(f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
+        self.video_stream = cv2.VideoCapture(
+            f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
 
         self.threads["video"].start()
+
+    def disable_video_stream(self) -> None:
+        """Disables the video stream."""
+        self.video_on = False
+        self.send_command("stream off")
 
     def get_video_stream(self) -> None:
         """Continually updates the video stream. Used by seperate thread."""
         while True:
             ret: bool
-            ret, self.video_frame = self.video_stream.read()
-            if ret == False:
-                print("Video stream read incorrectly")
-            else:
-                cv2.imshow("stream", self.video_frame)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
+            _, self.video_frame = self.video_stream.read()
 
         self.video_stream.release()
         self.sockets["video"].shutdown(socket.SHUT_WR)
@@ -119,8 +117,3 @@ class Robot:
             The current video frame.
         """
         return self.video_frame
-
-    def disable_video_stream(self) -> None:
-        """Disables the video stream."""
-        self.video_on = False
-        self.send_command("stream off")
