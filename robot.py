@@ -8,16 +8,6 @@ import cv2
 import numpy as np
 
 
-def create_sockets():
-    sockets: Dict[str, socket.socket] = {
-        "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
-        "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    }
-    sockets["command"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sockets["video"] = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    [sockets[x].settimeout(5) for x in sockets]
-
-
 class Robot:
 
     ROBOT_IP: str = "192.168.2.1"
@@ -28,15 +18,19 @@ class Robot:
     }
 
     def __init__(self) -> None:
-        self.sockets: Dict[str, socket.socket] = create_sockets()
+        socket.setdefaulttimeout(5)
+        sockets: Dict[str, socket.socket] = {
+            "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        }
 
         self.threads: Dict[str, threading.Thread] = {
             "video": threading.Thread(target=get_video_stream)
         }
 
         self.video_on: bool = False
-        self.video_stream: cv2.VideoCapture = cv2.VideoCapture(
-            f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
+        self.video_stream: cv2.VideoCapture = None
+        self.video_frame: np.ndarray = None
 
     def connect(self) -> bool:
         """Initialises connection to robot over the command port.
@@ -95,8 +89,10 @@ class Robot:
     def enable_video_stream(self) -> None:
         """Enables the robot's video stream."""
         self.video_on = True
+
         self.send_command("stream on")
         self.sockets["video"].connect((Robot.ROBOT_IP, Robot.PORTS["video"]))
+        self.video_stream = cv2.VideoCapture(f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
 
         self.threads["video"].start()
 
@@ -111,7 +107,7 @@ class Robot:
                 cv2.imshow("stream", self.video_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
-        
+
         self.video_stream.release()
         self.sockets["video"].shutdown(socket.SHUT_WR)
         self.sockets["video"].close()
