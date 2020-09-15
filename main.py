@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from robot import Robot
 import cv2
 import sys
@@ -6,9 +8,8 @@ import sys
 def main():
     robot = Robot()
     robot.connect()
-    robot.sendCommand("command on")
 
-    robot.startVideoStream()
+    robot.start_video_stream()
     cv2.destroyAllWindows()
 
 

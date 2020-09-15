@@ -1,78 +1,125 @@
-# TODO: add multithreading to enable robot to do stuff while streaming video
+#!/usr/bin/env python
 
 import socket
 import cv2
 
 
 class Robot:
+    """A class that allows programs to easily interface with the RoboMaster EP Core
 
+    Attributes:
+        sockets (dict): Dictionary
+        video_on (bool): The current state of the video. True for on, False otherwise.
+        video_stream (None): The current video stream, if it is turned on.
+    """
     ROBOT_IP = "192.168.2.1"
+    PORTS = {"video": 40921, "control": 40923, "event": 40925}
 
-    def __init__(self):
-        self.command_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.video_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self) -> None:
+
+        self.sockets = {
+            "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+            "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
+        }
+        self.sockets["command"] = socket.socket(socket.AF_INET,
+                                                socket.SOCK_STREAM)
+        self.sockets["video"] = socket.socket(socket.AF_INET,
+                                              socket.SOCK_STREAM)
+        [self.sockets[x].settimeout(5) for x in self.sockets]
+
+        # video
         self.video_on = False
         self.video_stream = None
 
-        self.command_s.settimeout(10)
+    def connect(self) -> bool:
+        """Initialises connection to robot over the command port.
+        
+        Returns:
+            The return value. True for success, False otherwise.
+        """
+        try:
+            self.sockets["command"].connect(
+                (Robot.ROBOT_IP, Robot.PORTS["control"]))
+        except socket.timeout as e:
+            print("Error connecting")
+            return False
+        self.send_command("command on")
+        return True
 
-    def connect(self):
-        self.command_s.connect((Robot.ROBOT_IP, 40923))
-        # enabling command mode
-        print("Connected")
+    def send_command(self, command: str) -> str:
+        """Sends command to the robot.
 
-    def sendCommand(self, command):
-        # correcting syntax
+        Args:
+            command: The command to be sent to the robot.
+
+        Returns:
+            The robot's response.
+        """
+        # Correcting syntax
         if command[-1] != ";":
             command += ";"
-        # sending command
-        self.command_s.send(command.encode("utf-8"))
+        # Sending command
+        self.sockets["command"].send(command.encode("utf-8"))
 
         # receiving command
         try:
-            buf = self.command_s.recv(1024)
+            buf = self.sockets["command"].recv(1024)
             return buf.decode("utf-8")
         except socket.error as e:
             return f"Error receiving: {e}"
 
-    def commandMode(self):
-        self.command_s.connect((Robot.ROBOT_IP, 40923))
+    def enable_command_mode(self) -> None:
+        """Enables command mode."""
+        self.sockets["command"].connect(
+            (Robot.ROBOT_IP, Robot.PORTS["control"]))
         while True:
             command = input("Command: ")
-            # quitting program
+            # exiting command mode
             if command.lower() == "q":
                 break
             else:
-                response = self.sendCommand(command)
+                response = self.send_command(command)
                 print(response)
 
         # Disable the port connection
-        self.command_s.shutdown(socket.SHUT_WR)
-        self.command_s.close()
+        self.sockets["command"].shutdown(socket.SHUT_WR)
+        self.sockets["command"].close()
 
-    def startVideoStream(self):
-        self.sendCommand("stream on")
-        self.video_s.connect((Robot.ROBOT_IP, 40921))
+    def start_video_stream(self) -> None:
+        """Begins receiving the video stream on a seperate thread."""
+
+        self.send_command("stream on")
+        self.sockets["video"].connect((Robot.ROBOT_IP, Robot.PORTS["video"]))
         self.video_on = True
 
-        self.video_stream = cv2.VideoCapture(f"tcp://{Robot.ROBOT_IP}:40921")
-        self.getVideoStream()
+        self.video_stream = cv2.VideoCapture(
+            f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
+        self.get_video_stream()
 
-        self.video_s.shutdown(socket.SHUT_WR)
-        self.video_s.close()
+        self.sockets["video"].shutdown(socket.SHUT_WR)
+        self.sockets["video"].close()
 
-    def getVideoStream(self):
-        """Seperate function used for threading"""
+    def get_video_stream(self) -> None:
+        """Continually updates the video stream."""
         while True:
-            ret, frame = self.video_stream.read()
+            ret, self.video_frame = self.video_stream.read()
             if ret == False:
                 print("Video stream read incorrectly")
             else:
-                cv2.imshow("frame", frame)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+                cv2.imshow("frame", self.video_frame)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
         self.video_stream.release()
 
-    def readVideoStream(self):
-        """Used by external program"""
+    def read_video_stream(self):
+        """Access the current video frame.
+        
+        Returns:
+            The current video frame.
+        """
         return self.video_frame
+
+
+robot = Robot()
+robot.start_video_stream()()
+print(type(robot.read_video_stream()))
