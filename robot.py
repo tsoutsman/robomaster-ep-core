@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import socket
+import threading
 from typing import ClassVar, Dict
 
 import cv2
@@ -29,8 +30,13 @@ class Robot:
     def __init__(self) -> None:
         self.sockets: Dict[str, socket.socket] = create_sockets()
 
+        self.threads: Dict[str, threading.Thread] = {
+            "video": threading.Thread(target=get_video_stream)
+        }
+
         self.video_on: bool = False
-        self.video_stream: cv2.VideoCapture = None
+        self.video_stream: cv2.VideoCapture = cv2.VideoCapture(
+            f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
 
     def connect(self) -> bool:
         """Initialises connection to robot over the command port.
@@ -86,32 +92,29 @@ class Robot:
         self.sockets["command"].shutdown(socket.SHUT_WR)
         self.sockets["command"].close()
 
-    def start_video_stream(self) -> None:
-        """Begins receiving the video stream on a seperate thread."""
-
+    def enable_video_stream(self) -> None:
+        """Enables the robot's video stream."""
+        self.video_on = True
         self.send_command("stream on")
         self.sockets["video"].connect((Robot.ROBOT_IP, Robot.PORTS["video"]))
-        self.video_on = True
 
-        self.video_stream = cv2.VideoCapture(
-            f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
-        self.get_video_stream()
-
-        self.sockets["video"].shutdown(socket.SHUT_WR)
-        self.sockets["video"].close()
+        self.threads["video"].start()
 
     def get_video_stream(self) -> None:
-        """Continually updates the video stream."""
+        """Continually updates the video stream. Used by seperate thread."""
         while True:
             ret: bool
             ret, self.video_frame = self.video_stream.read()
             if ret == False:
                 print("Video stream read incorrectly")
             else:
-                cv2.imshow("frame", self.video_frame)
+                cv2.imshow("stream", self.video_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
+        
         self.video_stream.release()
+        self.sockets["video"].shutdown(socket.SHUT_WR)
+        self.sockets["video"].close()
 
     def read_video_stream(self) -> np.ndarray:
         """Access the current video frame.
@@ -120,3 +123,8 @@ class Robot:
             The current video frame.
         """
         return self.video_frame
+
+    def disable_video_stream(self) -> None:
+        """Disables the video stream."""
+        self.video_on = False
+        self.send_command("stream off")
