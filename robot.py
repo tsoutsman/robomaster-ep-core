@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 
 import socket
+
 import cv2
+import numpy as np
 
 
 class Robot:
-    """A class that allows programs to easily interface with the RoboMaster EP Core
 
-    Attributes:
-        sockets (dict): Dictionary
-        video_on (bool): The current state of the video. True for on, False otherwise.
-        video_stream (None): The current video stream, if it is turned on.
-    """
     ROBOT_IP = "192.168.2.1"
     PORTS = {"video": 40921, "control": 40923, "event": 40925}
 
     def __init__(self) -> None:
-
         self.sockets = {
             "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
             "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
@@ -111,15 +106,10 @@ class Robot:
                     break
         self.video_stream.release()
 
-    def read_video_stream(self):
+    def read_video_stream(self) -> np.ndarray:
         """Access the current video frame.
         
         Returns:
             The current video frame.
         """
         return self.video_frame
-
-
-robot = Robot()
-robot.start_video_stream()()
-print(type(robot.read_video_stream()))

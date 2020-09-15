@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from robot import Robot
 import cv2
-import sys
+
+from robot import Robot
 
 
-def main():
+def main() -> None:
     robot = Robot()
     robot.connect()
 
