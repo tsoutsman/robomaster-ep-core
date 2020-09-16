@@ -19,13 +19,13 @@ class Robot:
 
     def __init__(self) -> None:
         socket.setdefaulttimeout(5)
-        sockets: Dict[str, socket.socket] = {
+        self.sockets: Dict[str, socket.socket] = {
             "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
             "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         }
 
         self.threads: Dict[str, threading.Thread] = {
-            "video": threading.Thread(target=get_video_stream)
+            "video": threading.Thread(target=self.__get_video_stream)
         }
 
         self.video_on: bool = False
@@ -67,20 +67,19 @@ class Robot:
         except socket.error as e:
             return f"Error receiving: {e}"
 
-    def enable_command_mode(self) -> None:
-        """Enables command mode."""
+    def enter_command_mode(self) -> None:
+        """Enables command mode. Should only be used for testing."""
         self.sockets["command"].connect(
             (Robot.ROBOT_IP, Robot.PORTS["control"]))
         while True:
-            command: str = input("Command: ")
-            # exiting command mode
+            command: str = input("[Robot]$ ")
+            # Enter "q" or "Q" to exit command mode.
             if command.lower() == "q":
                 break
             else:
                 response: str = self.send_command(command)
                 print(response)
 
-        # Disable the port connection
         self.sockets["command"].shutdown(socket.SHUT_WR)
         self.sockets["command"].close()
 
@@ -98,12 +97,10 @@ class Robot:
     def disable_video_stream(self) -> None:
         """Disables the video stream."""
         self.video_on = False
-        self.send_command("stream off")
 
-    def get_video_stream(self) -> None:
+    def __get_video_stream(self) -> None:
         """Continually updates the video stream. Used by seperate thread."""
-        while True:
-            ret: bool
+        while video_on == True:
             _, self.video_frame = self.video_stream.read()
 
         self.video_stream.release()
