@@ -23,7 +23,7 @@ class Robot:
             "command": socket.socket(socket.AF_INET, socket.SOCK_STREAM),
             "video": socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         }
-
+        
         self.threads: Dict[str, threading.Thread] = {
             "video": threading.Thread(target=self.__get_video_stream)
         }
@@ -87,11 +87,10 @@ class Robot:
         """Enables the robot's video stream."""
         self.video_on = True
 
-        self.send_command("stream on")
+        response = self.send_command("stream on")
         self.sockets["video"].connect((Robot.ROBOT_IP, Robot.PORTS["video"]))
         self.video_stream = cv2.VideoCapture(
             f"tcp://{Robot.ROBOT_IP}:{Robot.PORTS['video']}")
-
         self.threads["video"].start()
 
     def disable_video_stream(self) -> None:
@@ -100,7 +99,8 @@ class Robot:
 
     def __get_video_stream(self) -> None:
         """Continually updates the video stream. Used by seperate thread."""
-        while video_on == True:
+        while self.video_on == True:
+            print("ok")
             _, self.video_frame = self.video_stream.read()
 
         self.video_stream.release()
