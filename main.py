@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
+import time
+
 import cv2
+from connection import Port
 
 from robot import Robot
 
 
 def show_stream(robot: Robot) -> None:
     while True:
-        print("yo")
-        frame = robot.read_video_stream()
+        frame = robot.video.read()
         try:
             cv2.imshow("frame", frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -18,12 +20,11 @@ def show_stream(robot: Robot) -> None:
 
 
 def main() -> None:
-    robot: Robot = Robot()
-    robot.connect()
-    #robot.send_command("")
-
-    robot.enable_video_stream()
+    robot: Robot = robot()
+    robot.connection.connect()
+    robot.video.enable()
     show_stream(robot)
+    robot.connection.disconnect(Port.all)
 
 
 if __name__ == "__main__":
