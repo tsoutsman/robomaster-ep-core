@@ -78,10 +78,9 @@ class Connection:
                 self.sockets[x].shutdown(socket.SHUT_WR).close()
                 for x in self.sockets
             ]
-        elif port not in self.sockets:
-            return
-        self.sockets[port].shutdown(socket.SHUT_WR)
-        self.sockets[port].close()
+        elif port in self.sockets:
+            self.sockets[port].shutdown(socket.SHUT_WR)
+            self.sockets[port].close()
 
     def get_ip(self) -> str:
         """Returns the robot's ip.

@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import time
-
 import cv2
 from modules.connection import Port
 
@@ -22,8 +20,10 @@ def show_stream(robot: Robot) -> None:
 def main() -> None:
     robot: Robot = Robot()
     robot.connection.connect(Port.command)
+    robot.connection.connect(Port.video)
     robot.video.enable()
     show_stream(robot)
+    robot.video.disable()
     robot.connection.disconnect(Port.all)
 
 

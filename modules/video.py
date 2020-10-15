@@ -21,15 +21,17 @@ class Video:
         """Enables the video stream.
 
         Raises:
-            AssertionError: If a connection to the robot's control port hasn't been established.
+            AssertionError: If a connection to the robot's control or video port hasn't been established.
         """
         assert (
             self.__connection.get_sockets().get(Port.control)
         ), "A connection with the command port first needs to be established."
-
-        self.__connection.connect(Port.video)
+        assert (
+            self.__connection.get_sockets().get(Port.video)
+        ), "A connection with the video port first needs to be established."
+        self.__connection.send("stream on;".encode("utf-8"))
         self.__status = True
-        self.__video_stream = cv2.VideoCapture(
+        self.__stream = cv2.VideoCapture(
             f"tcp://{self.__connection.get_ip()}:{Port.video.value}")
         self.thread.start()
 
@@ -43,7 +45,7 @@ class Video:
         Returns:
             The current video frame
         """
-        return self.current_frame
+        return self.__current_frame
 
     def get_status(self) -> None:
         """Returns the state of the video stream.
@@ -55,5 +57,5 @@ class Video:
 
     def __get_stream(self) -> None:
         while self.__status:
-            ret, self.current_frame = self.__stream.read()
+            ret, self.__current_frame = self.__stream.read()
         self.__stream.release()
