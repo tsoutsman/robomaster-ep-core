@@ -3,7 +3,7 @@
 import time
 
 import cv2
-from connection import Port
+from modules.connection import Port
 
 from robot import Robot
 
@@ -20,8 +20,8 @@ def show_stream(robot: Robot) -> None:
 
 
 def main() -> None:
-    robot: Robot = robot()
-    robot.connection.connect()
+    robot: Robot = Robot()
+    robot.connection.connect(Port.command)
     robot.video.enable()
     show_stream(robot)
     robot.connection.disconnect(Port.all)

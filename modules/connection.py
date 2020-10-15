@@ -8,7 +8,7 @@ from typing import Dict
 class Port(Enum):
     video = 40921
     audio = 40922
-    control = 40923
+    command = 40923
     message = 40924
     event = 40925
     broadcast = 40926
@@ -21,10 +21,10 @@ class Connection:
 
     def __init__(self):
         socket.setdefaulttimeout(5)
-        sockets: Dict[Port, socket.socket] = {}
+        self.sockets: Dict[Port, socket.socket] = {}
 
     def send(self, command) -> str:
-        """Sends a command to the robot's control port
+        """Sends a command to the robot's command port
 
         Args:
             command: The command to be sent
@@ -33,18 +33,18 @@ class Connection:
             The robot's response
         
         Raises:
-            AssertionError: If a connection to the robot's control port hasn't been established
+            AssertionError: If a connection to the robot's command port hasn't been established
         """
         assert (
-            Port.control in self.sockets
-        ), "A connection to the control port first needs to be established"
+            Port.command in self.sockets
+        ), "A connection to the command port first needs to be established"
 
         if command[-1] != ";":
             command += ";"
 
-        self.sockets[Port.control].send(command.encode("utf-8"))
+        self.sockets[Port.command].send(command.encode("utf-8"))
         try:
-            buf: str = self.sockets[Port.control].recv(1024)
+            buf: str = self.sockets[Port.command].recv(1024)
             return buf.decode("utf-8")
         except socket.error as err:
             return f"Error receiving: {err}"
